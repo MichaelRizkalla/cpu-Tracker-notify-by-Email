@@ -23,7 +23,7 @@ the mechanism of sending Email is done through IFTTT
 ## How to use it
 
 ### Prerequisites
-- The current code was built using *gcc version 7.5.0*
+- The current code can be built using *gcc version 12*
 - need to make account on IFTTT and if this(webhook) then that(gmail)
 >> accoring to my example this screen shot will help you 
 ![image](https://user-images.githubusercontent.com/66727825/183442396-e29e3f15-46ce-4ff3-863c-9fd74d00e52a.png)
