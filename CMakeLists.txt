@@ -1,19 +1,25 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.9)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+include(CheckIPOSupported)
 
 project(CPU_Tracker)
 
 set(EXTERN_DIR "${PROJECT_SOURCE_DIR}/extern")
 set(FMT_INCLUDE_DIR ${EXTERN_DIR}/fmt/include/)
 set(FMT_LIBRARY_DIR ${EXTERN_DIR}/fmt/lib/)
+set(INCLUDE_DIRS "source/")
 
-
-file(GLOB SRC_FILES ${PROJECT_SOURCE_DIR}/*.cpp)
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/script.sh DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-
+file(GLOB_RECURSE SRC_FILES ${PROJECT_SOURCE_DIR}/source/*.cpp)
 add_executable(${PROJECT_NAME} ${SRC_FILES})
+
+# enable LTO
+check_ipo_supported(RESULT result)
+if(result)
+    set_property(TARGET ${PROJECT_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+endif()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_BUILD_TYPE MATCHES "Debug")
     target_compile_options(${PROJECT_NAME} PRIVATE 
@@ -50,6 +56,10 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC" AND CMAKE_BUILD_TYPE MATCHES "Releas
 endif()
 
 if(NOT CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-    target_include_directories(${PROJECT_NAME} PRIVATE ${FMT_INCLUDE_DIR})
+    target_include_directories(${PROJECT_NAME} PRIVATE ${FMT_INCLUDE_DIR} ${INCLUDE_DIRS})
     target_link_libraries(${PROJECT_NAME} PRIVATE ${FMT_LIBRARY_DIR}libfmt.a)
+else()
+    target_include_directories(${PROJECT_NAME} PRIVATE ${INCLUDE_DIRS})
 endif()
+
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/script/script.sh DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

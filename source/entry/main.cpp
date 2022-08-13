@@ -1,7 +1,7 @@
 
-#include "DeviceManger.hpp"
-#include "client.hpp"
 #include <chrono>
+#include <connection/Client.h>
+#include <device/DeviceManger.h>
 #include <iostream>
 #include <thread>
 
@@ -27,7 +27,17 @@ constexpr const char message_format_string[] =
     "{{ \"Battery\" : {}, "
     "\"Heating\" : \"{}C\","
     "\"Memory\" : \"{}\","
-    "\"Uptme\" : \"{}\"}}";
+    "\"Uptme\" : \"{}\"}}\n";
+
+constexpr const char server[] = "maker.ifttt.com";
+
+namespace {
+    using namespace std::literals::chrono_literals;
+    void do_sleep(std::chrono::milliseconds msec = 10000ms) {
+        // if there is no charging happen yet or if there is a charger but  still under 50
+        std::this_thread::sleep_for(msec);
+    }
+} // namespace
 
 int main() {
 
@@ -40,8 +50,11 @@ int main() {
 
         if (mgr.get_battery() < 50 && notification == false) {
             Client ciftt {};
-            ciftt.init("maker.ifttt.com", 80);
-            ciftt.connectToServer();
+            ciftt.init(server, 80);
+            if (!ciftt.connectToServer()) {
+                do_sleep();
+                continue;
+            }
 
             auto message_string = myfmt::format(message_format_string, mgr.get_battery(), mgr.get_temp() / 1000,
                                                 mgr.get_memory(), mgr.get_uptime());
@@ -50,17 +63,28 @@ int main() {
 
             auto request_message = myfmt::format("{}Content-Length: {}\r\n\r\n{}\r\n\r\n", request_string,
                                                  message_string.size(), message_string);
-            ciftt.sendrequest(request_message);
-            std::cout << ciftt.readRespose();
-            notification = true;
+            if (!ciftt.sendrequest(request_message)) {
+                do_sleep();
+                continue;
+            } else {
+                do_sleep(1000ms);
+            }
+
+            auto response = ciftt.readRespose();
+            if (response.size() > 0) {
+                std::cout << response << '\n';
+                notification = true;
+            } else {
+                do_sleep();
+                continue;
+            }
         }
+
         if (mgr.get_battery() > 50 && notification == true) {
             // reset the trial if the charger is disconnected
             notification = false;
         } else {
-            // if there is no charging happen yet or if there is a charger but  still under 50
-            using namespace std::literals::chrono_literals;
-            std::this_thread::sleep_for(10000ms);
+            do_sleep();
         }
     }
 }
